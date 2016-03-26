@@ -1,4 +1,30 @@
-/* TFT_Extension_old.cpp */
+/* TFT_Extension_old.cpp 
+
+The MIT License (MIT)
+
+Copyright (c) 2014 Andrew Mascolo Jr
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+
 
 #include "TFT_Extension_old.h"
 #include <avr/pgmspace.h>
@@ -56,8 +82,9 @@ struct Radio {
   uint8_t number[Button_Groups];
 } Block, Circle;
 
-struct TouchButtons{
-  char * Text[Num_Of_Buttons];
+struct TouchButtons {
+  char * PText[Num_Of_Buttons];
+  char * NPText[Num_Of_Buttons];
   bool TxtEnable[Num_Of_Buttons];
   bool Font_Size[Num_Of_Buttons];
   bool Button[Num_Of_Buttons];
@@ -66,7 +93,7 @@ struct TouchButtons{
   bool Round[Num_Of_Buttons];
 }T_Button, T_Circle, L_Button, L_Circle, T_Triangle, L_Triangle;
 
-struct latching{
+struct latching {
   bool buttons;
   bool circles;
   bool triangles;
@@ -501,13 +528,20 @@ bool TFT_Extension_old ::TouchTriangle(int x1,int y1,int base, int deg)
     }
   }
   
+  return PointInTriangle(tx, ty, Cx, Cy, Cx1, Cy1, Cx2, Cy2);// this checks to see if the touch coords are within the created triangle.
+}
+
+bool TFT_Extension_old::PointInTriangle(int tx, int ty, int Cx, int Cy, int Cx1, int Cy1, int Cx2, int Cy2)
+{
   float A = Area(Cx, Cy, Cx1, Cy1, Cx2, Cy2); // This is the ideal area of the triangle based on the 3 points.
   float A1 = Area(tx, ty, Cx1, Cy1, Cx2, Cy2);// this checks to see if the touch coords are within the created triangle.
   float A2 = Area(Cx, Cy, tx, ty, Cx2, Cy2);  // The reason three are needed is because each one is a section of the triangle.
   float A3 = Area(Cx, Cy, Cx1, Cy1, tx, ty);
 
-  if(A >= A1 + A2 + A3) return true;
-  return false;  
+  if(A >= (A1 + A2 + A3)) 
+    return true;
+	
+  return false;
 }
 
 bool TFT_Extension_old ::LatchButton( int x1, int y1, int x2, int y2, uint8_t buttonNumber)
@@ -565,7 +599,8 @@ bool TFT_Extension_old ::LatchTriangle(int x1, int y1, int base, int deg, uint8_
 //This is a standard touch screen button and will draw the actual button.
 bool TFT_Extension_old::TouchButton_Draw(int x1, int y1, int x2, int y2, uint8_t buttonNumber) 
 {
-    byte strl = strlen(T_Button.Text[buttonNumber]);
+    byte strl = strlen(T_Button.PText[buttonNumber]);
+	byte strl_2 = strlen(T_Button.NPText[buttonNumber]);
     int Xpos = (x2 + x1)/2; // find the center of the button
     int Ypos = (y2 + y1)/2; // -----------------------------
  
@@ -594,35 +629,46 @@ bool TFT_Extension_old::TouchButton_Draw(int x1, int y1, int x2, int y2, uint8_t
 	  
 	  if(T_Button.TxtEnable[buttonNumber]) // If there is text for that button, show it.
 	   {
-		 if((ButtonColor1[buttonNumber].buttons.rgb == ButtonColor2[buttonNumber].buttons.rgb) 
-		  )
-		  {
+		 if((ButtonColor1[buttonNumber].buttons.rgb == ButtonColor2[buttonNumber].buttons.rgb) )
+		 {
 			_Disp->setBackColor(ButtonColor1[buttonNumber].buttons.rgb);
 			_Disp->setColor(ButtonColor1[buttonNumber].buttons.text.rgb); // Show the text color
-		  }
+		 }
 		 else
 		 {
 		   if(T_Button.Button[buttonNumber])
 		   {
 			 _Disp->setBackColor(ButtonColor1[buttonNumber].buttons.rgb);
-			 _Disp->setColor(ButtonColor1[buttonNumber].buttons.text.rgb); // Show the text color
+			 if(ButtonColor1[buttonNumber].buttons.text.rgb != ButtonColor1[buttonNumber].buttons.rgb)
+			   _Disp->setColor(ButtonColor1[buttonNumber].buttons.text.rgb); // Show the text color
+			 else
+			   _Disp->setColor(~ButtonColor1[buttonNumber].buttons.text.rgb);
 		   }
 		   else
 		   {
 			 _Disp->setBackColor(ButtonColor2[buttonNumber].buttons.rgb);
-			 _Disp->setColor(~ButtonColor1[buttonNumber].buttons.text.rgb); // Show the text color
+			 if(ButtonColor1[buttonNumber].buttons.text.rgb != ButtonColor2[buttonNumber].buttons.rgb)
+			   _Disp->setColor(ButtonColor1[buttonNumber].buttons.text.rgb); // Show the text color
+			 else
+			   _Disp->setColor(~ButtonColor1[buttonNumber].buttons.text.rgb); 
 		   }
 		 }
 		 
 		 if(T_Button.Font_Size[buttonNumber]) //big font
 		 {
 		   _Disp->setFont(BigFont);
-		   _Disp->print(T_Button.Text[buttonNumber], Xpos - (strl*8), Ypos - 8, 0); //print the string in the center of the button. Big font is 16x16
+		   if(T_Button.Button[buttonNumber])
+		     _Disp->print(T_Button.PText[buttonNumber], Xpos - (strl*8), Ypos - 8, 0); //print the string in the center of the button. Big font is 16x16
+		   else
+		     _Disp->print(T_Button.NPText[buttonNumber], Xpos - (strl_2*8), Ypos - 8, 0);
 		 }
 		 else
 		 {
 		   _Disp->setFont(SmallFont);
-		   _Disp->print(T_Button.Text[buttonNumber], Xpos - (strl*4), Ypos - 6, 0); // small font is 8x12
+		   if(T_Button.Button[buttonNumber])
+		     _Disp->print(T_Button.PText[buttonNumber], Xpos - (strl*4), Ypos - 6, 0); // small font is 8x12
+		   else
+		     _Disp->print(T_Button.NPText[buttonNumber], Xpos - (strl_2*4), Ypos - 6, 0);
 		 }
 	   }
 	T_Button.lastButton[buttonNumber] = T_Button.Button[buttonNumber]; // This allows the button to be redrawn when released.
@@ -632,7 +678,8 @@ bool TFT_Extension_old::TouchButton_Draw(int x1, int y1, int x2, int y2, uint8_t
 
 bool TFT_Extension_old::Button(int x1, int y1, int x2, int y2, uint8_t buttonNumber, byte TYPE, unsigned long time) 
 {
-    byte strl = strlen(T_Button.Text[buttonNumber]);
+    byte strl = strlen(T_Button.PText[buttonNumber]);
+	byte strl_2 = strlen(T_Button.NPText[buttonNumber]);
     int Xpos = (x2 + x1)/2; // find the center of the button
     int Ypos = (y2 + y1)/2; // -----------------------------
  
@@ -709,25 +756,37 @@ bool TFT_Extension_old::Button(int x1, int y1, int x2, int y2, uint8_t buttonNum
 	  {
 		if(T_Button.Button[buttonNumber])
 		{
-		  _Disp->setBackColor(ButtonColor1[buttonNumber].buttons.rgb);
-		  _Disp->setColor(ButtonColor1[buttonNumber].buttons.text.rgb); // Show the text color
+		 _Disp->setBackColor(ButtonColor1[buttonNumber].buttons.rgb);
+		 if(ButtonColor1[buttonNumber].buttons.text.rgb != ButtonColor1[buttonNumber].buttons.rgb)
+		   _Disp->setColor(ButtonColor1[buttonNumber].buttons.text.rgb); // Show the text color
+		 else
+		   _Disp->setColor(~ButtonColor1[buttonNumber].buttons.text.rgb);
 		}
 		else
 		{
-		  _Disp->setBackColor(ButtonColor2[buttonNumber].buttons.rgb);
-		  _Disp->setColor(~ButtonColor1[buttonNumber].buttons.text.rgb); // Show the text color
+		 _Disp->setBackColor(ButtonColor2[buttonNumber].buttons.rgb);
+		 if(ButtonColor1[buttonNumber].buttons.text.rgb != ButtonColor2[buttonNumber].buttons.rgb)
+		   _Disp->setColor(ButtonColor1[buttonNumber].buttons.text.rgb); // Show the text color
+		 else
+		   _Disp->setColor(~ButtonColor1[buttonNumber].buttons.text.rgb); 
 		}
 	 }
 
 	 if(T_Button.Font_Size[buttonNumber]) //big font
 	 {
 	   _Disp->setFont(BigFont);
-	   _Disp->print(T_Button.Text[buttonNumber], Xpos - (strl*8), Ypos - 8, 0); //print the string in the center of the button. Big font is 16x16
+	   if(T_Button.Button[buttonNumber])
+		 _Disp->print(T_Button.PText[buttonNumber], Xpos - (strl*8), Ypos - 8, 0); //print the string in the center of the button. Big font is 16x16
+	   else
+		 _Disp->print(T_Button.NPText[buttonNumber], Xpos - (strl_2*8), Ypos - 8, 0);
 	 }
 	 else
 	 {
 	   _Disp->setFont(SmallFont);
-	   _Disp->print(T_Button.Text[buttonNumber], Xpos - (strl*4), Ypos - 6, 0); // small font is 8x12
+	   if(T_Button.Button[buttonNumber])
+		 _Disp->print(T_Button.PText[buttonNumber], Xpos - (strl*4), Ypos - 6, 0); // small font is 8x12
+	   else
+		 _Disp->print(T_Button.NPText[buttonNumber], Xpos - (strl_2*4), Ypos - 6, 0);
 	 }
    }
    T_Button.lastButton[buttonNumber] = T_Button.Button[buttonNumber]; // This allows the button to be redrawn when released.
@@ -737,7 +796,9 @@ bool TFT_Extension_old::Button(int x1, int y1, int x2, int y2, uint8_t buttonNum
 
 bool TFT_Extension_old::CircleButton(int cx, int cy, int radius, uint8_t circleNumber, byte TYPE, unsigned long time)
 {
-  byte strl = strlen(T_Circle.Text[circleNumber]); // get the length of the string
+  byte strl = strlen(T_Circle.PText[circleNumber]); // get the length of the string
+  byte strl_2 = strlen(T_Circle.NPText[circleNumber]);
+  
   switch(TYPE)
   {
     case TOUCH:
@@ -807,27 +868,39 @@ bool TFT_Extension_old::CircleButton(int cx, int cy, int radius, uint8_t circleN
 	  }
 	 else
 	 {
-	   if(T_Circle.Button[circleNumber])
-	   {
+	    if(T_Circle.Button[circleNumber])
+		{
 		 _Disp->setBackColor(CircleColor1[circleNumber].buttons.rgb);
-		 _Disp->setColor(CircleColor1[circleNumber].buttons.text.rgb); // Show the text color
-	   }
-	   else
-	   {
+		 if(CircleColor1[circleNumber].buttons.text.rgb != CircleColor1[circleNumber].buttons.rgb)
+		   _Disp->setColor(CircleColor1[circleNumber].buttons.text.rgb); // Show the text color
+		 else
+		   _Disp->setColor(~CircleColor1[circleNumber].buttons.text.rgb);
+		}
+		else
+		{
 		 _Disp->setBackColor(CircleColor2[circleNumber].buttons.rgb);
-		 _Disp->setColor(~CircleColor1[circleNumber].buttons.text.rgb); // Show the text color
-	   }
+		 if(CircleColor1[circleNumber].buttons.text.rgb != CircleColor2[circleNumber].buttons.rgb)
+		   _Disp->setColor(CircleColor1[circleNumber].buttons.text.rgb); // Show the text color
+		 else
+		   _Disp->setColor(~CircleColor1[circleNumber].buttons.text.rgb); 
+		}
 	 }
 	 
 	 if(T_Circle.Font_Size[circleNumber]) //big font
 	 {
 	   _Disp->setFont(BigFont);
-	   _Disp->print(T_Circle.Text[circleNumber], cx - (strl*8), cy - 8, 0); //print the string in the center of the button. Big font is 16x16
+	   if(T_Circle.Button[circleNumber])
+	     _Disp->print(T_Circle.PText[circleNumber], cx - (strl*8), cy - 8, 0); //print the string in the center of the button. Big font is 16x16
+	   else
+	     _Disp->print(T_Circle.NPText[circleNumber], cx - (strl_2*8), cy - 8, 0);
 	 }
 	 else
 	 {
 	   _Disp->setFont(SmallFont);
-	   _Disp->print(T_Circle.Text[circleNumber], cx - (strl*4), cy - 6, 0); // small font is 8x12
+	   if(T_Circle.Button[circleNumber])
+	     _Disp->print(T_Circle.PText[circleNumber], cx - (strl*4), cy - 6, 0); // small font is 8x12
+	   else
+	     _Disp->print(T_Circle.NPText[circleNumber], cx - (strl_2*4), cy - 6, 0);
 	 }
    }
  
@@ -836,7 +909,9 @@ bool TFT_Extension_old::CircleButton(int cx, int cy, int radius, uint8_t circleN
 
 bool TFT_Extension_old::TriangleButton(int x1,int y1,int base, int deg, uint8_t triangleNumber, byte TYPE, unsigned long time)
 { 
-  byte strl = strlen(T_Triangle.Text[triangleNumber]); // get the length of the string
+  byte strl = strlen(T_Triangle.PText[triangleNumber]); // get the length of the string
+  byte strl_2 = strlen(T_Triangle.NPText[triangleNumber]);
+  
   switch(TYPE)
   {
     case TOUCH:
@@ -905,26 +980,38 @@ bool TFT_Extension_old::TriangleButton(int x1,int y1,int base, int deg, uint8_t 
 	  else
 	  {
 	    if(T_Triangle.Button[triangleNumber])
-	    {
-		  _Disp->setBackColor(TriangleColor1[triangleNumber].buttons.rgb);
-		  _Disp->setColor(TriangleColor1[triangleNumber].buttons.text.rgb); // Show the text color
-	    }
-	    else
-	    {
-		  _Disp->setBackColor(TriangleColor2[triangleNumber].buttons.rgb);
-		  _Disp->setColor(~TriangleColor1[triangleNumber].buttons.text.rgb); // Show the text color
-	    }
+		{
+		 _Disp->setBackColor(TriangleColor1[triangleNumber].buttons.rgb);
+		 if(TriangleColor1[triangleNumber].buttons.text.rgb != TriangleColor1[triangleNumber].buttons.rgb)
+		   _Disp->setColor(TriangleColor1[triangleNumber].buttons.text.rgb); // Show the text color
+		 else
+		   _Disp->setColor(~TriangleColor1[triangleNumber].buttons.text.rgb);
+		}
+		else
+		{
+		 _Disp->setBackColor(TriangleColor2[triangleNumber].buttons.rgb);
+		 if(TriangleColor1[triangleNumber].buttons.text.rgb != TriangleColor2[triangleNumber].buttons.rgb)
+		   _Disp->setColor(TriangleColor1[triangleNumber].buttons.text.rgb); // Show the text color
+		 else
+		   _Disp->setColor(~TriangleColor1[triangleNumber].buttons.text.rgb); 
+		}
 	  }
 	 
 	  if(T_Triangle.Font_Size[triangleNumber]) //big font
 	  {
 	    _Disp->setFont(BigFont);
-	    _Disp->print(T_Triangle.Text[triangleNumber], x1 - (strl*8), y1 - 8, 0); //print the string in the center of the button. Big font is 16x16
+		if(T_Triangle.Button[triangleNumber])
+	      _Disp->print(T_Triangle.PText[triangleNumber], x1 - (strl*8), y1 - 8, 0); //print the string in the center of the button. Big font is 16x16
+		else
+		  _Disp->print(T_Triangle.NPText[triangleNumber], x1 - (strl_2*8), y1 - 8, 0);
  	  }
 	  else
 	  {
 	    _Disp->setFont(SmallFont);
-	    _Disp->print(T_Triangle.Text[triangleNumber], x1 - (strl*4), y1 - 6, 0); // small font is 8x12
+		if(T_Triangle.Button[triangleNumber])
+	      _Disp->print(T_Triangle.PText[triangleNumber], x1 - (strl*4), y1 - 6, 0); // small font is 8x12
+		else
+          _Disp->print(T_Triangle.NPText[triangleNumber], x1 - (strl_2*4), y1 - 6, 0);		
 	  }
 	}
 
@@ -968,7 +1055,9 @@ bool TFT_Extension_old::TextButton(char *str, byte font_size, int x1, int y1, in
  
 bool TFT_Extension_old::LatchButton_Draw( int x1, int y1, int x2, int y2, uint8_t buttonNumber)
 { 
-  byte strl = strlen(L_Button.Text[buttonNumber]); // get the length of the string
+  byte strl = strlen(L_Button.PText[buttonNumber]); // get the length of the string
+  byte strl_2 = strlen(L_Button.NPText[buttonNumber]);
+  
   int Xpos = (x2 + x1)/2; // find the center of the button
   int Ypos = (y2 + y1)/2; // -----------------------------
   
@@ -1012,37 +1101,49 @@ bool TFT_Extension_old::LatchButton_Draw( int x1, int y1, int x2, int y2, uint8_
   L_Button.lastButton[buttonNumber] = L_Button.Button[buttonNumber];
   
   if(L_Button.TxtEnable[buttonNumber]) // If there is text for that button, show it.
-	   {
-	     if(ButtonColor1[buttonNumber].latches.rgb == ButtonColor2[buttonNumber].latches.rgb)
-		  {
-			_Disp->setBackColor(ButtonColor1[buttonNumber].latches.rgb);
-	        _Disp->setColor(ButtonColor1[buttonNumber].latches.text.rgb); // Show the text color
-		  }
+   {
+	 if(ButtonColor1[buttonNumber].latches.rgb == ButtonColor2[buttonNumber].latches.rgb)
+	  {
+		_Disp->setBackColor(ButtonColor1[buttonNumber].latches.rgb);
+		_Disp->setColor(ButtonColor1[buttonNumber].latches.text.rgb); // Show the text color
+	  }
+	 else
+	 {
+	    if(L_Button.Button[buttonNumber])
+		{
+		 _Disp->setBackColor(ButtonColor1[buttonNumber].latches.rgb);
+		 if(ButtonColor1[buttonNumber].latches.text.rgb != ButtonColor1[buttonNumber].latches.rgb)
+		   _Disp->setColor(ButtonColor1[buttonNumber].latches.text.rgb); // Show the text color
 		 else
-		 {
-		   if(L_Button.Button[buttonNumber])
-		   {
-		     _Disp->setBackColor(ButtonColor1[buttonNumber].latches.rgb);
-		     _Disp->setColor(ButtonColor1[buttonNumber].latches.text.rgb); // Show the text color
-		   }
-		   else
-		   {
-		     _Disp->setBackColor(ButtonColor2[buttonNumber].latches.rgb);
-		     _Disp->setColor(~ButtonColor1[buttonNumber].latches.text.rgb); // Show the text color
-		   }
-		 }
-		 
-	     if(L_Button.Font_Size[buttonNumber]) //big font
-         {
-           _Disp->setFont(BigFont);
-           _Disp->print(L_Button.Text[buttonNumber], Xpos - (strl*8), Ypos - 8, 0); //print the string in the center of the button. Big font is 16x16
-         }
-         else
-         {
-           _Disp->setFont(SmallFont);
-           _Disp->print(L_Button.Text[buttonNumber], Xpos - (strl*4), Ypos - 6, 0); // small font is 8x12
-         }
-	   }
+		   _Disp->setColor(~ButtonColor1[buttonNumber].latches.text.rgb);
+		}
+		else
+		{
+		 _Disp->setBackColor(ButtonColor2[buttonNumber].latches.rgb);
+		 if(ButtonColor1[buttonNumber].latches.text.rgb != ButtonColor2[buttonNumber].latches.rgb)
+		   _Disp->setColor(ButtonColor1[buttonNumber].latches.text.rgb); // Show the text color
+		 else
+		   _Disp->setColor(~ButtonColor1[buttonNumber].latches.text.rgb); 
+		}
+	 }
+	 
+	 if(L_Button.Font_Size[buttonNumber]) //big font
+	 {
+	   _Disp->setFont(BigFont);
+	   if(L_Button.Button[buttonNumber])
+	     _Disp->print(L_Button.PText[buttonNumber], Xpos - (strl*8), Ypos - 8, 0); //print the string in the center of the button. Big font is 16x16
+	   else
+	    _Disp->print(L_Button.NPText[buttonNumber], Xpos - (strl_2*8), Ypos - 8, 0);
+	 }
+	 else
+	 {
+	   _Disp->setFont(SmallFont);
+	   if(L_Button.Button[buttonNumber])
+	     _Disp->print(L_Button.PText[buttonNumber], Xpos - (strl*4), Ypos - 6, 0); // small font is 8x12
+	   else
+	     _Disp->print(L_Button.NPText[buttonNumber], Xpos - (strl_2*4), Ypos - 6, 0);
+	 }
+   }
   return L[buttonNumber].buttons;
 }
 
@@ -1074,7 +1175,8 @@ uint8_t TFT_Extension_old::TouchCircleByQuad(int cx, int cy, int radius, uint8_t
 // See the comments from TouchButton_Draw
 bool TFT_Extension_old ::TouchCircle_Draw(int cx, int cy, int radius, uint8_t circleNumber)
 {
-  byte strl = strlen(T_Circle.Text[circleNumber]); // get the length of the string
+  byte strl = strlen(T_Circle.PText[circleNumber]); // get the length of the string
+  byte strl_2 = strlen(T_Circle.NPText[circleNumber]);
   
   if( TouchCircle(cx,cy,radius) )
     T_Circle.Button[circleNumber] = true;
@@ -1109,24 +1211,36 @@ bool TFT_Extension_old ::TouchCircle_Draw(int cx, int cy, int radius, uint8_t ci
 	   if(T_Circle.Button[circleNumber])
 	   {
 		 _Disp->setBackColor(CircleColor1[circleNumber].buttons.rgb);
-		 _Disp->setColor(CircleColor1[circleNumber].buttons.text.rgb); // Show the text color
+		 if(CircleColor1[circleNumber].buttons.text.rgb != CircleColor1[circleNumber].buttons.rgb)
+		   _Disp->setColor(CircleColor1[circleNumber].buttons.text.rgb); // Show the text color
+		 else
+		   _Disp->setColor(~CircleColor1[circleNumber].buttons.text.rgb);
 	   }
 	   else
 	   {
 		 _Disp->setBackColor(CircleColor2[circleNumber].buttons.rgb);
-		 _Disp->setColor(~CircleColor1[circleNumber].buttons.text.rgb); // Show the text color
+		 if(CircleColor1[circleNumber].buttons.text.rgb != CircleColor2[circleNumber].buttons.rgb)
+		   _Disp->setColor(CircleColor1[circleNumber].buttons.text.rgb); // Show the text color
+		 else
+		   _Disp->setColor(~CircleColor1[circleNumber].buttons.text.rgb);
 	   }
 	 }
 	 
 	 if(T_Circle.Font_Size[circleNumber]) //big font
 	 {
 	   _Disp->setFont(BigFont);
-	   _Disp->print(T_Circle.Text[circleNumber], cx - (strl*8), cy - 8, 0); //print the string in the center of the button. Big font is 16x16
+	   if(T_Circle.Button[circleNumber])
+	     _Disp->print(T_Circle.PText[circleNumber], cx - (strl*8), cy - 8, 0); //print the string in the center of the button. Big font is 16x16
+	   else
+	     _Disp->print(T_Circle.NPText[circleNumber], cx - (strl_2*8), cy - 8, 0);
 	 }
 	 else
 	 {
 	   _Disp->setFont(SmallFont);
-	   _Disp->print(T_Circle.Text[circleNumber], cx - (strl*4), cy - 6, 0); // small font is 8x12
+	   if(T_Circle.Button[circleNumber])
+	     _Disp->print(T_Circle.PText[circleNumber], cx - (strl*4), cy - 6, 0); // small font is 8x12
+	   else
+	     _Disp->print(T_Circle.NPText[circleNumber], cx - (strl_2*4), cy - 6, 0);
 	 }
    }
  
@@ -1136,7 +1250,8 @@ bool TFT_Extension_old ::TouchCircle_Draw(int cx, int cy, int radius, uint8_t ci
 // See the comments from LatchButton_Draw
 bool TFT_Extension_old ::LatchCircle_Draw(int cx, int cy, int radius, uint8_t circleNumber)
 { 
-  byte strl = strlen(L_Circle.Text[circleNumber]); // get the length of the string
+  byte strl = strlen(L_Circle.PText[circleNumber]); // get the length of the string
+  byte strl_2 = strlen(L_Circle.NPText[circleNumber]);
   
   if( TouchCircle(cx,cy,radius) )
   {
@@ -1180,31 +1295,43 @@ bool TFT_Extension_old ::LatchCircle_Draw(int cx, int cy, int radius, uint8_t ci
 		   if(L_Circle.Button[circleNumber])
 		   {
 			 _Disp->setBackColor(CircleColor1[circleNumber].latches.rgb);
-			 _Disp->setColor(CircleColor1[circleNumber].latches.text.rgb); // Show the text color
+			 if(CircleColor1[circleNumber].latches.text.rgb != CircleColor1[circleNumber].latches.rgb)
+			   _Disp->setColor(CircleColor1[circleNumber].latches.text.rgb); // Show the text color
+			 else
+			   _Disp->setColor(~CircleColor1[circleNumber].latches.text.rgb);
 		   }
 		   else
 		   {
 			 _Disp->setBackColor(CircleColor2[circleNumber].latches.rgb);
-			 _Disp->setColor(~CircleColor1[circleNumber].latches.text.rgb); // Show the text color
+			 if(CircleColor1[circleNumber].latches.text.rgb != CircleColor2[circleNumber].latches.rgb)
+			   _Disp->setColor(CircleColor1[circleNumber].latches.text.rgb); // Show the text color
+			 else
+			   _Disp->setColor(~CircleColor1[circleNumber].latches.text.rgb);
 		   }
 		 }
 		 
 		 if(L_Circle.Font_Size[circleNumber]) //big font
 		 {
 		   _Disp->setFont(BigFont);
-		   _Disp->print(L_Circle.Text[circleNumber], cx - (strl*8), cy - 8, 0); //print the string in the center of the button. Big font is 16x16
+		   if(L_Circle.Button[circleNumber])
+		     _Disp->print(L_Circle.PText[circleNumber], cx - (strl*8), cy - 8, 0); //print the string in the center of the button. Big font is 16x16
+		   else 
+		     _Disp->print(L_Circle.NPText[circleNumber], cx - (strl_2*8), cy - 8, 0);
 		 }
 		 else
 		 {
 		   _Disp->setFont(SmallFont);
-		   _Disp->print(L_Circle.Text[circleNumber], cx - (strl*4), cy - 6, 0); // small font is 8x12
+		   if(L_Circle.Button[circleNumber])
+		     _Disp->print(L_Circle.PText[circleNumber], cx - (strl*4), cy - 6, 0); // small font is 8x12
+		   else
+		     _Disp->print(L_Circle.NPText[circleNumber], cx - (strl_2*4), cy - 6, 0);
 		 }
 	   }
   return L[circleNumber].circles;
 }
 
 //Calculate the area of an equilateral triangle  
-float TFT_Extension_old::Area(int Ax, int Ay, int Bx, int By, int Cx, int Cy)
+long TFT_Extension_old::Area(int Ax, int Ay, int Bx, int By, int Cx, int Cy)
 {
  return abs((Ax*(By - Cy) + Bx*(Cy - Ay) + Cx*(Ay - By))/2);
 }
@@ -1212,8 +1339,9 @@ float TFT_Extension_old::Area(int Ax, int Ay, int Bx, int By, int Cx, int Cy)
 // See comments from the other _Draw buttons 
 bool TFT_Extension_old ::TouchTriangle_Draw(int x1,int y1,int base, int deg, uint8_t triangleNumber)
 { 
-  byte strl = strlen(T_Triangle.Text[triangleNumber]); // get the length of the string
-
+  byte strl = strlen(T_Triangle.PText[triangleNumber]); // get the length of the string
+  byte strl_2 = strlen(T_Triangle.NPText[triangleNumber]);
+  
    if( TouchTriangle(x1,y1,base,deg) ) 
     T_Triangle.Button[triangleNumber] = true;
   else 
@@ -1245,24 +1373,36 @@ bool TFT_Extension_old ::TouchTriangle_Draw(int x1,int y1,int base, int deg, uin
 	   if(T_Triangle.Button[triangleNumber])
 	   {
 		 _Disp->setBackColor(TriangleColor1[triangleNumber].buttons.rgb);
-		 _Disp->setColor(TriangleColor1[triangleNumber].buttons.text.rgb); // Show the text color
+		 if(TriangleColor1[triangleNumber].buttons.text.rgb != TriangleColor1[triangleNumber].buttons.rgb)
+		   _Disp->setColor(TriangleColor1[triangleNumber].buttons.text.rgb); // Show the text color
+		 else
+		   _Disp->setColor(~TriangleColor1[triangleNumber].buttons.text.rgb);
 	   }
 	   else
 	   {
 		 _Disp->setBackColor(TriangleColor2[triangleNumber].buttons.rgb);
-		 _Disp->setColor(~TriangleColor1[triangleNumber].buttons.text.rgb); // Show the text color
+		 if(TriangleColor1[triangleNumber].buttons.text.rgb != TriangleColor2[triangleNumber].buttons.rgb)
+		   _Disp->setColor(TriangleColor1[triangleNumber].buttons.text.rgb); // Show the text color
+		 else
+		   _Disp->setColor(~TriangleColor1[triangleNumber].buttons.text.rgb);
 	   }
 	 }
 	 
 	 if(T_Triangle.Font_Size[triangleNumber]) //big font
 	 {
 	   _Disp->setFont(BigFont);
-	   _Disp->print(T_Triangle.Text[triangleNumber], x1 - (strl*8), y1 - 8, 0); //print the string in the center of the button. Big font is 16x16
+	   if(T_Triangle.Button[triangleNumber])
+	     _Disp->print(T_Triangle.PText[triangleNumber], x1 - (strl*8), y1 - 8, 0); //print the string in the center of the button. Big font is 16x16
+	   else
+	     _Disp->print(T_Triangle.NPText[triangleNumber], x1 - (strl_2*8), y1 - 8, 0); 
 	 }
 	 else
 	 {
 	   _Disp->setFont(SmallFont);
-	   _Disp->print(T_Triangle.Text[triangleNumber], x1 - (strl*4), y1 - 6, 0); // small font is 8x12
+	   if(T_Triangle.Button[triangleNumber])
+	     _Disp->print(T_Triangle.PText[triangleNumber], x1 - (strl*4), y1 - 6, 0); // small font is 8x12
+	   else
+	     _Disp->print(T_Triangle.NPText[triangleNumber], x1 - (strl_2*4), y1 - 6, 0);
 	 }
    }
  
@@ -1272,7 +1412,8 @@ bool TFT_Extension_old ::TouchTriangle_Draw(int x1,int y1,int base, int deg, uin
 // See comments from the other _Draw buttons  
 bool TFT_Extension_old ::LatchTriangle_Draw(int x1, int y1, int base, int deg, uint8_t triangleNumber)
 {
-  byte strl = strlen(L_Triangle.Text[triangleNumber]); // get the length of the string
+  byte strl = strlen(L_Triangle.PText[triangleNumber]); // get the length of the string
+  byte strl_2 = strlen(L_Triangle.NPText[triangleNumber]);
   
   if( TouchTriangle(x1,y1,base,deg) )
   {
@@ -1315,24 +1456,36 @@ bool TFT_Extension_old ::LatchTriangle_Draw(int x1, int y1, int base, int deg, u
 	   if(L_Triangle.Button[triangleNumber])
 	   {
 		 _Disp->setBackColor(TriangleColor1[triangleNumber].latches.rgb);
-		 _Disp->setColor(TriangleColor1[triangleNumber].latches.text.rgb); // Show the text color
+		 if(TriangleColor1[triangleNumber].latches.text.rgb != TriangleColor1[triangleNumber].latches.rgb)
+		   _Disp->setColor(TriangleColor1[triangleNumber].latches.text.rgb); // Show the text color
+		 else
+		   _Disp->setColor(~TriangleColor1[triangleNumber].latches.text.rgb);
 	   }
 	   else
 	   {
 		 _Disp->setBackColor(TriangleColor2[triangleNumber].latches.rgb);
-		 _Disp->setColor(~TriangleColor1[triangleNumber].latches.text.rgb); // Show the text color
+		 if(TriangleColor1[triangleNumber].latches.text.rgb != TriangleColor2[triangleNumber].latches.rgb)
+		   _Disp->setColor(TriangleColor1[triangleNumber].latches.text.rgb); // Show the text color
+		 else
+		   _Disp->setColor(~TriangleColor1[triangleNumber].latches.text.rgb);
 	   }
 	 }
 	 
 	 if(L_Triangle.Font_Size[triangleNumber]) //big font
 	 {
 	   _Disp->setFont(BigFont);
-	   _Disp->print(L_Triangle.Text[triangleNumber], x1 - (strl*8), y1 - 8, 0); //print the string in the center of the button. Big font is 16x16
+	   if(L_Triangle.Button[triangleNumber])
+	     _Disp->print(L_Triangle.PText[triangleNumber], x1 - (strl*8), y1 - 8, 0); //print the string in the center of the button. Big font is 16x16
+	   else
+	     _Disp->print(L_Triangle.NPText[triangleNumber], x1 - (strl_2*8), y1 - 8, 0);
 	 }
 	 else
 	 {
 	   _Disp->setFont(SmallFont);
-	   _Disp->print(L_Triangle.Text[triangleNumber], x1 - (strl*4), y1 - 6, 0); // small font is 8x12
+	   if(L_Triangle.Button[triangleNumber])
+	     _Disp->print(L_Triangle.PText[triangleNumber], x1 - (strl*4), y1 - 6, 0); // small font is 8x12
+	   else
+	     _Disp->print(L_Triangle.NPText[triangleNumber], x1 - (strl_2*4), y1 - 6, 0);
 	 }
    }
   return L[triangleNumber].triangles; 
@@ -1789,58 +1942,94 @@ void TFT_Extension_old::SetLatchTriangleColors(uint8_t ButtonNumber, word color1
   L_Triangle.Fill[ButtonNumber] = fill;
 }
 
-void TFT_Extension_old::SetTouchButtonText(uint8_t ButtonNumber,char* txt, bool size, word color)
+void TFT_Extension_old::SetTouchButtonText(uint8_t ButtonNumber,char* txt, char* nptxt, bool size, word color)
 {
-  T_Button.Text[ButtonNumber] = txt;
+  T_Button.PText[ButtonNumber] = txt;
+  T_Button.NPText[ButtonNumber] = nptxt;
   T_Button.Font_Size[ButtonNumber] = size;
   T_Button.TxtEnable[ButtonNumber] = true;
  
   ButtonColor1[ButtonNumber].buttons.text.rgb = color;
 }
 
-void TFT_Extension_old::SetLatchButtonText(uint8_t ButtonNumber,char* txt, bool size, word color)
+void TFT_Extension_old::SetTouchButtonText(uint8_t ButtonNumber,char* txt, bool size, word color)
 {
-  L_Button.Text[ButtonNumber] = txt;
+  SetTouchButtonText(ButtonNumber, txt, txt, size, color);
+}
+
+void TFT_Extension_old::SetLatchButtonText(uint8_t ButtonNumber,char * txt, char* nptxt, bool size, word color)
+{
+  L_Button.PText[ButtonNumber] = txt;
+  L_Button.NPText[ButtonNumber] = nptxt;
   L_Button.Font_Size[ButtonNumber] = size;
   L_Button.TxtEnable[ButtonNumber] = true;
   
   ButtonColor1[ButtonNumber].latches.text.rgb = color;
 }
 
-void TFT_Extension_old::SetTouchCircleText(uint8_t CircleNumber, char* txt, bool size, word color)
+void TFT_Extension_old::SetLatchButtonText(uint8_t ButtonNumber,char * txt, bool size, word color)
 {
-  T_Circle.Text[CircleNumber] = txt;
+  SetLatchButtonText( ButtonNumber, txt, txt, size, color);
+}
+
+void TFT_Extension_old::SetTouchCircleText(uint8_t CircleNumber, char* txt, char * nptxt, bool size, word color)
+{
+  T_Circle.PText[CircleNumber] = txt;
+  T_Circle.NPText[CircleNumber] = nptxt;
   T_Circle.Font_Size[CircleNumber] = size;
   T_Circle.TxtEnable[CircleNumber] = true;
   
   CircleColor1[CircleNumber].buttons.text.rgb = color;
 }
 
-void TFT_Extension_old::SetLatchCircleText(uint8_t CircleNumber, char* txt, bool size, word color)
+void TFT_Extension_old::SetTouchCircleText(uint8_t CircleNumber, char* txt, bool size, word color)
 {
-  L_Circle.Text[CircleNumber] = txt;
+  SetTouchCircleText(CircleNumber, txt, txt, size, color);
+}
+
+void TFT_Extension_old::SetLatchCircleText(uint8_t CircleNumber, char* txt, char * nptxt, bool size, word color)
+{
+  L_Circle.PText[CircleNumber] = txt;
+  L_Circle.NPText[CircleNumber] = nptxt;
   L_Circle.Font_Size[CircleNumber] = size;
   L_Circle.TxtEnable[CircleNumber] = true;
   
   CircleColor1[CircleNumber].latches.text.rgb = color;
 }
 
-void TFT_Extension_old::SetTouchTriangleText(uint8_t TriangleNumber, char* txt, bool size, word color)
+void TFT_Extension_old::SetLatchCircleText(uint8_t CircleNumber, char* txt, bool size, word color)
 {
-  T_Triangle.Text[TriangleNumber] = txt;
+  SetLatchCircleText(CircleNumber, txt, txt, size, color);
+}
+
+void TFT_Extension_old::SetTouchTriangleText(uint8_t TriangleNumber, char* txt, char * nptxt, bool size, word color)
+{
+  T_Triangle.PText[TriangleNumber] = txt;
+  T_Triangle.NPText[TriangleNumber] = nptxt;
   T_Triangle.Font_Size[TriangleNumber] = size;
   T_Triangle.TxtEnable[TriangleNumber] = true;
   
   TriangleColor1[TriangleNumber].buttons.text.rgb = color;
 }
 
-void TFT_Extension_old::SetLatchTriangleText(uint8_t TriangleNumber, char* txt, bool size, word color)
+void TFT_Extension_old::SetTouchTriangleText(uint8_t TriangleNumber, char* txt, bool size, word color)
 {
-  L_Triangle.Text[TriangleNumber] = txt;
+  SetTouchTriangleText(TriangleNumber, txt, txt, size, color);
+}
+
+void TFT_Extension_old::SetLatchTriangleText(uint8_t TriangleNumber, char* txt, char* nptxt, bool size, word color)
+{
+  L_Triangle.PText[TriangleNumber] = txt;
+  L_Triangle.NPText[TriangleNumber] = nptxt;
   L_Triangle.Font_Size[TriangleNumber] = size;
   L_Triangle.TxtEnable[TriangleNumber] = true;
   
   TriangleColor1[TriangleNumber].latches.text.rgb = color;
+}
+
+void TFT_Extension_old::SetLatchTriangleText(uint8_t TriangleNumber, char* txt, bool size, word color)
+{
+  SetLatchTriangleText(TriangleNumber, txt, txt, size, color);
 }
 
 void TFT_Extension_old::ResetTouchButton(byte ID)
@@ -2122,7 +2311,7 @@ void TFT_Extension_old::SetAll_RCB_Untoggled_Color(word color)
 //======================================================================
 //
 //======================================================================
-void TFT_Extension_old::Triangle(int x1, int y1,int x2,int y2,int x3,int y3)
+void TFT_Extension_old::drawTriangle(int x1, int y1,int x2,int y2,int x3,int y3)
 {
   _Disp->drawLine(x1,y1,x2,y2);// lean left
   _Disp->drawLine(x2,y2,x3,y3);// _ base
@@ -2150,24 +2339,24 @@ void TFT_Extension_old::drawTriangle(int x1, int y1, int base, int deg)
     switch(dir)
     {
      case up:
-       Triangle(Cx,Cy,Cx1,Cy1,Cx2-1,Cy2-1);
+       drawTriangle(Cx,Cy,Cx1,Cy1,Cx2-1,Cy2-1);
        break;
 	   
      case down:
-	   Triangle(Cx+1,Cy,Cx1+1,Cy1,Cx2+1,Cy2+1);
+	   drawTriangle(Cx+1,Cy,Cx1+1,Cy1,Cx2+1,Cy2+1);
        break;
 	   
      case left:
-	   Triangle(Cx,Cy,Cx1,Cy1,Cx2-1,Cy2+1);
+	   drawTriangle(Cx,Cy,Cx1,Cy1,Cx2-1,Cy2+1);
        break;
 	   
      case right:
-	   Triangle(Cx,Cy,Cx1,Cy1,Cx2+1,Cy2);
+	   drawTriangle(Cx,Cy,Cx1,Cy1,Cx2+1,Cy2);
        break;
     }
   }
   else 
-    Triangle(Cx,Cy,Cx1,Cy1,Cx2,Cy2); 
+    drawTriangle(Cx,Cy,Cx1,Cy1,Cx2,Cy2);
 }
  
 void TFT_Extension_old ::fillTriangle(int x1,int y1,int base, int deg)
@@ -2186,40 +2375,71 @@ void TFT_Extension_old ::fillTriangle(int x1,int y1,int base, int deg)
   Cx2 = x1 + sin((float(deg) + 240) * deg_to_rad) * rad;
   Cy2 = y1 + cos((float(deg) + 240) * deg_to_rad) * rad;
   
-  //if(base >= 60)
-  //{
-    switch(dir)
-    {
-     case up:
-       Triangle(Cx,Cy,Cx1,Cy1,Cx2-1,Cy2-1);
-	   fillPoly(Cx,Cy,Cx1,Cy1,Cx2-1,Cy2-1);
-	   fillPoly(Cx1,Cy1,Cx2-1,Cy2-1,Cx,Cy);
-       break;
-	   
-     case down:
-	   Triangle(Cx+1,Cy,Cx1+1,Cy1,Cx2+1,Cy2+1);
-	   fillPoly(Cx+1,Cy,Cx1+1,Cy1,Cx2+1,Cy2+1);
-	   fillPoly(Cx1+1,Cy1,Cx2+1,Cy2+1,Cx+1,Cy);
-       break;
-	   
-     case left:
-	   Triangle(Cx,Cy,Cx1,Cy1,Cx2-1,Cy2+1);
-	   fillPoly(Cx,Cy,Cx1,Cy1,Cx2-1,Cy2+1);
-	   fillPoly(Cx1,Cy1,Cx,Cy,Cx2-1,Cy2+1);
-       break;
-	   
-     case right:
-	   Triangle(Cx,Cy,Cx1,Cy1,Cx2+1,Cy2);
-	   fillPoly(Cx,Cy,Cx1,Cy1,Cx2+1,Cy2);
-	   fillPoly(Cx1,Cy1,Cx,Cy,Cx2+1,Cy2);
-       break;
-    }
- // }
-  //else 
-    //Triangle(Cx,Cy,Cx1,Cy1,Cx2,Cy2); 
+  // int Bmost = max(Cy, max(Cy1,Cy2));
+  // int Tmost = min(Cy, min(Cy1,Cy2));
+  // int Lmost = min(Cx, min(Cx1,Cx2));
+  // int Rmost = max(Cx, max(Cx1,Cx2));
+  // bool in, lastIn = LOW;
   
-  //having two does take longer, but this ensures that the triangle is completely filled. 
-  //fillPoly(Cx1,Cy1,Cx2,Cy2,Cx,Cy);
+  // for(int x = Lmost; x < Rmost; x++)
+  // {
+	// lastIn = LOW;
+	// for(int y = Tmost; y < Bmost; y++)
+	// {
+	  // if(in = PointInTriangle(x, y, Cx, Cy, Cx1, Cy1, Cx2, Cy2)) // check to see if the x/y coordinates lie within the triangle
+	  // {
+		// _Disp->drawPixel(x, y);
+		// lastIn = in;
+	  // }
+	  
+	  // if(in == LOW && lastIn == HIGH)
+	  // {
+		// lastIn = LOW;
+		// break;
+	  // }
+	// }
+  // }  
+  fillTriangle(Cx,Cy, Cx1,Cy1, Cx2,Cy2);
+}
+
+void TFT_Extension_old::fillTriangle(int x1, int y1,int x2,int y2,int x3,int y3)
+{
+  float A,B,C;
+  int XL, XR;
+  
+  if(y1 > y2)
+  {
+    swap(int, x1, x2);
+	swap(int, y1, y2);
+  }
+  
+  if(y2 > y3)
+  {
+    swap(int, x2, x3);
+	swap(int, y2, y3);
+  }
+  
+  if(y1 > y2)
+  {
+    swap(int, x1, x2);
+	swap(int, y1, y2);
+  }
+  
+  A = float(x2 - x1)/float((y2 - y1)? (y2 - y1) : 1);
+  B = float(x3 - x1)/float((y3 - y1)? (y3 - y1) : 1);
+  C = float(x3 - x2)/float((y3 - y2)? (y3 - y2) : 1);
+  
+  for(int Dy = y1; Dy <= y3; Dy++)
+  {
+    if(Dy <= y2)
+	  XL = x1 + A*(Dy - y1);
+	else
+	  XL = x2 + C*(Dy - y2);
+	  
+	XR = x1 + B*(Dy - y1);
+	
+	_Disp->drawHLine(XL, Dy, (XR - XL));
+  } 
 }
 
 void TFT_Extension_old::Polygon(int cx, int cy, int sides, int diameter, word color, bool fill, float deg)

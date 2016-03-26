@@ -9,6 +9,28 @@
 	drawMoon       :: robtillaart
 	smiley_Face	   :: robtillaart
 	HourGlass      :: robtillaart
+	
+The MIT License (MIT)
+
+Copyright (c) 2014 Andrew Mascolo Jr
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
   
 */
 
@@ -20,6 +42,18 @@
 #include <ITDB02_Touch.h>
 
 #include <math.h>
+
+#ifdef UTFT_h
+#define DISPLAY UTFT
+#else
+#define DISPLAY ITDB02
+#endif
+
+#ifdef UTouch_h
+#define TOUCH UTouch
+#else
+#define TOUCH ITDB02_Touch
+#endif
 
 //=====================COLOR_PALLET==========================
 #define BLACK   0x0
@@ -63,7 +97,7 @@
 #define swap(type, A, B) {type T = A; A = B; B = T;}
 #define deg_to_rad 0.01745 + PI// 0.01745 = degrees to radians
 #define Button_Groups 5
-#define Num_Of_Buttons 10
+#define Num_Of_Buttons 25
 //=================END_OF_TOUCH_DEFINES======================
 
 //===================DISPLAY_DEFINES=========================
@@ -178,6 +212,12 @@ class TFT_Extension_old
 		void	SetLatchButtonColors(uint8_t ButtonNumber, word color1,word color2, bool fill, bool rounded);
 		void	SetLatchCircleColors(uint8_t ButtonNumber, word color1,word color2, bool fill);
 		void	SetLatchTriangleColors(uint8_t ButtonNumber, word color1,word color2, bool fill);
+		void	SetTouchButtonText(uint8_t ButtonNumber, char* txt, char * nptxt, bool size, word color);
+		void	SetLatchButtonText(uint8_t ButtonNumber, char* txt, char * nptxt, bool size, word color);
+		void	SetTouchCircleText(uint8_t CircleNumber, char* txt, char * nptxt, bool size, word color);
+		void	SetLatchCircleText(uint8_t CircleNumber, char* txt, char * nptxt, bool size, word color);
+		void	SetTouchTriangleText(uint8_t TriangleNumber, char* txt, char * nptxt, bool size, word color);
+		void	SetLatchTriangleText(uint8_t TriangleNumber, char* txt, char * nptxt, bool size, word color);
 		void	SetTouchButtonText(uint8_t ButtonNumber, char* txt, bool size, word color);
 		void	SetLatchButtonText(uint8_t ButtonNumber, char* txt, bool size, word color);
 		void	SetTouchCircleText(uint8_t CircleNumber, char* txt, bool size, word color);
@@ -222,8 +262,9 @@ class TFT_Extension_old
 		void	SetAll_RCB_Toggled_Color( word color);
 		void	SetAll_RB_Untoggled_Color( word color);
 		void	SetAll_RCB_Untoggled_Color( word color);
-		void	Triangle(int x1, int y1,int x2,int y2,int x3,int y3);
+		void	drawTriangle(int x1, int y1,int x2,int y2,int x3,int y3);
         void 	drawTriangle(int x1,int y1,int base, int deg);
+		void    fillTriangle(int x1, int y1,int x2,int y2,int x3,int y3);
 		void	fillTriangle(int x1,int y1,int base, int deg);
 		void	Polygon(int cx, int cy, int sides, int diameter, word color, bool fill, float deg = 0);
 		void	fillPoly(int x1, int y1, int x2, int y2, int x3, int y3);
@@ -251,7 +292,8 @@ class TFT_Extension_old
 		ITDB02_Touch	 *_Touch;		
 		
 	private:
-		float   Area(int Ax, int Ay, int Bx, int By, int Cx, int Cy);
+		long   Area(int Ax, int Ay, int Bx, int By, int Cx, int Cy);
+		bool	PointInTriangle(int tx, int ty, int Cx, int Cy, int Cx1, int Cy1, int Cx2, int Cy2);
         double 	Cx,Cx1,Cx2;
         double 	Cy,Cy1,Cy2;
 		int		touchX, touchY;
